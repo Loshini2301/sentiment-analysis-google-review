@@ -4,11 +4,26 @@ import re
 import os
 import matplotlib.pyplot as plt
 from collections import Counter
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
-import nltk
-nltk.data.path.append("/opt/render/nltk_data")
 
+# ---------------- NLTK SAFE SETUP (RENDER FRIENDLY) ----------------
+NLTK_DATA_PATH = "/opt/render/nltk_data"
+os.makedirs(NLTK_DATA_PATH, exist_ok=True)
+nltk.data.path.append(NLTK_DATA_PATH)
+
+try:
+    stop_words = set(stopwords.words("english"))
+except LookupError:
+    nltk.download("stopwords", download_dir=NLTK_DATA_PATH, quiet=True)
+    stop_words = set(stopwords.words("english"))
+
+# keep negations
+for w in ["not", "no", "never", "nor"]:
+    if w in stop_words:
+        stop_words.remove(w)
+# ------------------------------------------------------------------
 
 app = Flask(__name__)
 
@@ -19,11 +34,12 @@ with open("model/tfidf_vectorizer.pkl", "rb") as f:
     vectorizer = pickle.load(f)
 
 stemmer = PorterStemmer()
-stop_words = set(stopwords.words("english"))
-stop_words.discard("not")
-stop_words.discard("no")
-stop_words.discard("nor")
-stop_words.discard("never")
+
+positive_words = {"good", "great", "excellent", "amazing", "awesome", "nice", "love"}
+negative_words = {"bad", "worst", "poor", "terrible", "awful", "hate"}
+negation_words = {"not", "no", "never", "hardly"}
+
+os.makedirs("static/charts", exist_ok=True)
 
 def preprocess_text(text):
     text = re.sub("[^a-zA-Z]", " ", text)
@@ -31,12 +47,6 @@ def preprocess_text(text):
     words = text.split()
     words = [stemmer.stem(word) for word in words if word not in stop_words]
     return " ".join(words)
-
-positive_words = {"good", "great", "excellent", "amazing", "awesome", "nice", "love"}
-negative_words = {"bad", "worst", "poor", "terrible", "awful", "hate"}
-negation_words = {"not", "no", "never", "hardly"}
-
-os.makedirs("static/charts", exist_ok=True)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -55,7 +65,7 @@ def index():
         if action == "single":
             review = request.form.get("review", "")
             review_text = review
-            if review.strip() != "":
+            if review.strip():
                 cleaned = preprocess_text(review)
                 vector = vectorizer.transform([cleaned])
                 probs = model.predict_proba(vector)[0]
@@ -63,7 +73,7 @@ def index():
 
         elif action == "batch":
             file = request.files.get("file")
-            if file and file.filename != "":
+            if file and file.filename:
                 lines = file.read().decode("utf-8").splitlines()
                 reviews = [line.strip() for line in lines if line.strip()]
 
@@ -97,7 +107,9 @@ def index():
                 plt.close()
 
                 plt.figure()
-                plt.pie(values, labels=labels, autopct="%1.1f%%", colors=["#4CAF50", "#FFC107", "#F44336"], startangle=140, wedgeprops={'edgecolor': 'white'})
+                plt.pie(values, labels=labels, autopct="%1.1f%%",
+                        colors=["#4CAF50", "#FFC107", "#F44336"],
+                        startangle=140, wedgeprops={'edgecolor': 'white'})
                 pie_path = "static/charts/pie.png"
                 plt.savefig(pie_path)
                 plt.close()
@@ -107,16 +119,12 @@ def index():
 
                 all_tokens = []
                 for review in reviews:
-                    cleaned = preprocess_text(review)
-                    all_tokens.extend(cleaned.split())
+                    all_tokens.extend(preprocess_text(review).split())
 
                 keyword_counts = Counter(all_tokens)
                 keywords = ", ".join([w for w, _ in keyword_counts.most_common(10)])
 
-                bigrams = []
-                for i in range(len(all_tokens) - 1):
-                    bigrams.append(all_tokens[i] + " " + all_tokens[i + 1])
-
+                bigrams = [all_tokens[i] + " " + all_tokens[i + 1] for i in range(len(all_tokens) - 1)]
                 phrase_counts = Counter(bigrams)
                 phrases = ", ".join([p for p, _ in phrase_counts.most_common(10)])
 
@@ -160,4 +168,3 @@ def classify_sentiment(cleaned_review, probs):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-
