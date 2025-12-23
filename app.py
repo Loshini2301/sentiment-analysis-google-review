@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 from collections import Counter
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+import nltk
+nltk.data.path.append("/opt/render/nltk_data")
+
 
 app = Flask(__name__)
 
@@ -157,3 +160,4 @@ def classify_sentiment(cleaned_review, probs):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
