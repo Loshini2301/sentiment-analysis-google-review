@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sentiment Analysis Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<script>
+function clearReview() {
+    document.getElementById("reviewBox").value = "";
+    window.location.href = "/";
+}
+</script>
+
+<div class="container">
+    <h1>Sentiment Analysis Dashboard</h1>
+
+    <!-- Single Review Analysis -->
+    <div class="card">
+        <h2>Single Review Analysis</h2>
+        <form method="POST">
+            <textarea id="reviewBox" name="review" placeholder="Paste a review here">{{ review_text }}</textarea>
+
+            <div class="btn-group">
+                <button type="submit" name="action" value="single">Analyze</button>
+                <button type="button" onclick="clearReview()">Clear</button>
+            </div>
+        </form>
+
+        <p class="result">{{ sentiment }}</p>
+    </div>
+
+    <!-- Batch Upload -->
+    <div class="card">
+        <h2>Upload Reviews File</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <button type="submit" name="action" value="batch">Analyze File</button>
+        </form>
+    </div>
+
+    {% if total > 0 %}
+
+    <!-- Charts Section -->
+    <div class="card">
+        <h2>Sentiment Visualization</h2>
+
+        <div class="chart-row">
+            <div class="chart-box">
+                <h3>Bar Chart</h3>
+                <img src="{{ bar_chart }}" alt="Bar Chart">
+            </div>
+
+            <div class="chart-box">
+                <h3>Pie Chart</h3>
+                <img src="{{ pie_chart }}" alt="Pie Chart">
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Results -->
+    <div class="card">
+        <h2>Individual Review Results</h2>
+        <ul>
+            {% for r in batch_results %}
+            <li>{{ r }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Overall Analysis -->
+    <div class="card">
+        <h2>Overall Analysis</h2>
+        <p>Total Reviews: {{ total }}</p>
+        <p>Positive: {{ pos_count }}</p>
+        <p>Negative: {{ neg_count }}</p>
+        <p>Neutral: {{ neu_count }}</p>
+        <p><strong>Overall Sentiment: {{ overall }}</strong></p>
+    </div>
+
+    <!-- Keywords & Phrases -->
+    <div class="card">
+        <h2>Common Keywords & Phrases</h2>
+        <p><strong>Keywords:</strong> {{ keywords }}</p>
+        <p><strong>Phrases:</strong> {{ phrases }}</p>
+    </div>
+
+    {% endif %}
+</div>
+
+</body>
+</html>
